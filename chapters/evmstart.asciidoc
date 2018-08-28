@@ -4,3 +4,11 @@ EVM有多中不同的启动方式： 嵌入式和非嵌入式。
 == 嵌入式启动
 
 == FIFO通路
+通过run_erl命令可以实现标准输入输出的重定向，这个得益于FIFO（命名管道）技术。
+run_erl [-daemon] pipe_dir/ log_dir "exec command arg1 arg2 
+其中pipe_dir/指定了输入输入管道文件的存在路径，EVM需要在该目录下创建不重名的管道文件。管道命名格式为"erlang.pipe.0",最后的数字根据数量增加。EVM首先找到指定目录下已"erlang.pipe"开头文件的最大数字后缀，然后对其加1作为新管道的名字。
+恒定前缀： #define PIPE_STUBNAME  "erlang.pipe"
+前缀长度： #define PIPE_STUBLEN    strlen(PIPE_STUBNAME)
+数字的获取： atoi(direntp->d_name+PIPE_STUBLEN+1)
+
+有了管道名字后，通过mkfifo函数创建FIFO。
