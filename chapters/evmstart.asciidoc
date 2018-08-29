@@ -1,9 +1,137 @@
-== 虚拟机的启动
+= 虚拟机的启动
 EVM有多中不同的启动方式： 嵌入式和非嵌入式。
 
-== 嵌入式启动
+== Windowns系统
+通过“erl"命令可以启动EVM(Erlang运行时)。解析输入参数，然后启动“erl.exe”程序。
 
-== FIFO通路
+[source,shell]
+.erl
+----
+#! /bin/sh
+# 
+# %CopyrightBegin%
+# 
+# Copyright Ericsson AB 2002-2016. All Rights Reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# 
+# %CopyrightEnd%
+# 
+# Note! This shellscript expects to be run in a cygwin environment,
+# it converts erlc command lines to native windows erlc commands, which
+# basically means running the command cygpath on whatever is a path...
+
+CMD=""
+for x in "$@"; do 
+    case "$x" in
+	-I/*|-o/*)
+	    y=`echo $x | sed 's,^-[Io]\(/.*\),\1,g'`;
+	    z=`echo $x | sed 's,^-\([Io]\)\(/.*\),\1,g'`;
+	    #echo "Foooo:$z"
+	    MPATH=`cygpath -m $y`;
+	    CMD="$CMD -$z\"$MPATH\"";; 
+	/*)
+	    #echo "absolute:"$x;
+	    MPATH=`cygpath -m $x`;
+	    CMD="$CMD \"$MPATH\"";; 
+#	+{*);;
+	*)
+#	    y=`echo $x | sed 's,",\\\\\\\\\\\",g'`;
+	    y=`echo $x | sed 's,",\\\",g'`;
+	    CMD="$CMD \"$y\"";;
+    esac
+done
+#echo "$@"
+#eval echo erlc.exe $CMD
+ERL_TOP=`cygpath -m $ERL_TOP`
+export ERL_TOP
+eval erl.exe $CMD
+---
+
+在执行文件“erl.ext”（源码文件otp/erts/etc/win32/erl.c）中，将加载动态库文件“exlexec.dll”，然后获取Erlang运行时（ERT, Erlang Running Time)入口点“win_erlexec"。
+---
+#ifdef WIN32_WERL
+#define WERL 1
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR szCmdLine, int iCmdShow)
+{
+    int argc = __argc;
+    wchar_t **argv = __wargv;
+#else
+#define WERL 0
+int wmain(int argc, wchar_t **argv)
+{
+#endif
+  ...
+    if ((erlexec_handle = LoadLibraryW(erlexec_name)) == NULL) {
+        error("Could not load module %S.",erlexec_name);
+      }
+
+      if ((win_erlexec = (ErlexecFunction *) 
+           GetProcAddress(erlexec_handle,"win_erlexec")) == NULL) {
+                error("Could not find entry point \"win_erlexec\" in %S.", erlexec_name);
+      }
+  ...
+  return (*win_erlexec)(argc,utf8argv,erlexec_handle,WERL);
+} 
+---
+
+.erlexec.c
+---
+#ifdef __WIN32__
+__declspec(dllexport) int win_erlexec(int argc, char **argv, HANDLE module, int windowed)
+#else
+int main(int argc, char **argv)
+#endif
+{
+...
+      return start_win_emulator(emu, start_emulator_program, Eargsp, start_detached);
+    } else {
+      return start_emulator(emu, start_emulator_program, Eargsp, start_detached);
+    }
+#else
+...
+	status = fork();
+	if (status != 0)	/* Parent */
+	    return 0;
+
+	/*
+	 * Grandchild.
+	 */
+	close(0);
+	open("/dev/null", O_RDONLY);
+	close(1);
+	open("/dev/null", O_WRONLY);
+	close(2);
+	open("/dev/null", O_WRONLY);
+#ifdef DEBUG
+	execvp(emu, Eargsp); /* "xterm ..." needs to search the path */
+#endif
+    } 
+#ifdef DEBUG
+    else
+#endif
+    {
+	execv(emu, Eargsp);
+    }
+    error("Error %d executing \'%s\'.", errno, emu);
+    return 1;
+#endif
+}
+---
+
+== Unix
+
+=== FIFO通路
 通过run_erl命令可以实现标准输入输出的重定向，这个得益于FIFO（命名管道）技术。
 run_erl [-daemon] pipe_dir/ log_dir "exec command arg1 arg2 
 其中pipe_dir/指定了输入输入管道文件的存在路径，EVM需要在该目录下创建不重名的管道文件。管道命名格式为"erlang.pipe.0",最后的数字根据数量增加。EVM首先找到指定目录下已"erlang.pipe"开头文件的最大数字后缀，然后对其加1作为新管道的名字。
