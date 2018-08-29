@@ -56,10 +56,10 @@ done
 ERL_TOP=`cygpath -m $ERL_TOP`
 export ERL_TOP
 eval erl.exe $CMD
----
+----
 
 在执行文件“erl.ext”（源码文件otp/erts/etc/win32/erl.c）中，将加载动态库文件“exlexec.dll”，然后获取Erlang运行时（ERT, Erlang Running Time)入口点“win_erlexec"。
----
+----
 #ifdef WIN32_WERL
 #define WERL 1
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR szCmdLine, int iCmdShow)
@@ -83,10 +83,10 @@ int wmain(int argc, wchar_t **argv)
   ...
   return (*win_erlexec)(argc,utf8argv,erlexec_handle,WERL);
 } 
----
+----
 
 .erlexec.c
----
+----
 #ifdef __WIN32__
 __declspec(dllexport) int win_erlexec(int argc, char **argv, HANDLE module, int windowed)
 #else
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
     return 1;
 #endif
 }
----
+----
 
 == Unix
 
