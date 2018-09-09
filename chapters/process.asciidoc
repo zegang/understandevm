@@ -1,10 +1,12 @@
 = 进程管理和调度
 Erlang编程语言中很容易创建和销毁一个“进程”。那么EVM中的进程和操作系统的进程有什么差异呢？EVM是如何管理和调度这些进程的呢？
 
-==进程表示
+== 进程表示
 在Linux内核中进程通过task_struct数据结构(include/sched.h)表达，而EVM中通过更加直观的名为process的结构体(beam/erl_process.h)呈现。
+
 Linux中task_struct需要包含：状态信息（不可运行、可运行、停止），栈空间，进程标志，锁，优先级，所在运行队列，二进制格式，进程标识（PID),相关联进程的指针（父亲，儿子，兄弟，组长）...
 EVM中的进程也具有相似的信息量，进程的标识（ID）被封装在结构体ErtsPTabElementCommon中。
+
 emulator/beam/erl_ptab.h
 ----
 ypedef struct {
@@ -30,7 +32,6 @@ ypedef struct {
     } u;
 } ErtsPTabElementCommon;
 ----
-
 
 emulator/beam/erl_process.h
 ----
